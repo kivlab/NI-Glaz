@@ -6,6 +6,7 @@ uses
   SafeIniFiles in 'SafeIniFiles.pas';
 
 {$R *.res}
+{$R *.dkl_const.res}
 
 begin
   Application.Initialize;

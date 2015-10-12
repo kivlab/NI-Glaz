@@ -24,7 +24,8 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, Buttons, Spin, SafeINIFiles, ExtCtrls, ShellAPI,
-  CoolTrayIcon, TextTrayIcon, Menus, Bass, Registry, ImgList, ActiveX, ShlObj;
+  CoolTrayIcon, TextTrayIcon, Menus, Bass, Registry, ImgList, ActiveX, ShlObj,
+  DKLang;
 
 type
   TForm1 = class(TForm)
@@ -47,7 +48,6 @@ type
     Edit3: TEdit;
     Edit4: TEdit;
     CheckBox1: TCheckBox;
-    CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
     CheckBox4: TCheckBox;
     CheckBox5: TCheckBox;
@@ -82,6 +82,10 @@ type
     CheckBox6: TCheckBox;
     Timer2: TTimer;
     ImageList1: TImageList;
+    dklcMain: TDKLanguageController;
+    N5: TMenuItem;
+    mLanguage: TMenuItem;
+    N14: TMenuItem;
     function MinToStr(minutes: integer): string;
     procedure TrackBar1Change(Sender: TObject);
     procedure TrackBar2Change(Sender: TObject);
@@ -115,6 +119,8 @@ type
     procedure N13Click(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure UpdateStateNotify(Sender: TObject);
+    procedure N14Click(Sender: TObject);
   private
     { Private declarations }
     strs: HSTREAM;
@@ -122,6 +128,10 @@ type
     function GetSpecFolder(nFolder: integer): string;
     procedure PauseOrStart;
     function FileVersion: string;
+    // Updates form interface
+    procedure UpdateState;
+     // Language item click handler
+    procedure LanguageItemClick(Sender: TObject);
   public
     { Public declarations }
   end;
@@ -135,29 +145,17 @@ implementation
 
 const
   RegK = '\Software\Microsoft\Windows\CurrentVersion\Run';
-  { ключи реестра для автозапуска }
+  { registry keys to start with Windows }
   RegK2 = '\Software\NI Software\NI Glaz';
   RegV = 'NI Glaz';
 
 var
-  worktime: string = 'Время работы';
-  resttime: string = 'Время отдыха';
-  worktimes: string = 'Вам осталось работать';
-  resttimes: string = 'Вам осталось отдыхать';
-  workmsg: string = 'Работай!';
-  restmsg: string = 'Отдыхай!';
-  pauset: string = 'пауза';
-  min: string = 'мин';
-  hour: string = 'час';
-  h: string = 'ч';
-  pinfo: string = 'Программа для охраны Вашего зрения.';
   workmode: Boolean = false;
   notwork: integer = 0;
   soundok: Boolean = true;
   waiting: Boolean = false;
   ppath, appdata: string;
   PAutoStart: Boolean = false;
-  // есть ли прога в автостарте на момент запуска проги
 
   function _IntToStr(i, Wide: Cardinal): string;
   var
@@ -213,7 +211,7 @@ var
     end;
   end;
 
-// версия нач
+// Version begin
 function GetVersion(const FileName: String = '';
   const Fmt: String = '%d.%d.%d.%d'): String;
 var
@@ -273,7 +271,7 @@ begin
     Result := v
   end;
 end;
-// версия кон
+// Version end
 
 // Sound-Begin
 procedure TForm1.PlayMusic(filename: string; loop: Boolean);
@@ -301,7 +299,7 @@ begin
 end;
 // Sound-End
 
-// задержка на sec секунд
+// delay on sec seconds
 procedure TForm1.wait(sec: integer);
 var
   h: THandle;
@@ -325,10 +323,10 @@ var
   s: string;
 begin
   try
-    s := '0 ' + hour + ' 00 ' + min;
+    s := '0 ' + DKLangConstW('Shour') + ' 00 ' + DKLangConstW('Smin');
     h := minutes div 60;
     m := minutes mod 60;
-    s := IntToStr(h) + ' ' + hour + ' ' + _IntToStr(m, 2) + ' ' + min;
+    s := IntToStr(h) + ' ' + DKLangConstW('Shour') + ' ' + _IntToStr(m, 2) + ' ' + DKLangConstW('Smin');
   finally
     Result := s
   end;
@@ -336,18 +334,55 @@ end;
 
 procedure TForm1.TrackBar1Change(Sender: TObject);
 begin
-  Label1.Caption := worktime + ': ' + MinToStr(TrackBar1.Position)
+  Label1.Caption := DKLangConstW('Sworktime') + ': ' + MinToStr(TrackBar1.Position)
 end;
 
 procedure TForm1.TrackBar2Change(Sender: TObject);
 begin
-  Label4.Caption := resttime + ': ' + MinToStr(TrackBar2.Position)
+  Label4.Caption := DKLangConstW('Sresttime') + ': ' + MinToStr(TrackBar2.Position)
+end;
+
+procedure TForm1.UpdateState;
+const
+  awsModified: Array[Boolean] of UnicodeString = ('', '*');
+  //---
+  procedure UpdateLanguageMark;
+  var
+    i: Integer;
+    CurLang: LANGID; // To avoid excess synch calls
+  begin
+    CurLang := LangManager.LanguageID;
+    for i := 0 to mLanguage.Count-1 do
+      with mLanguage[i] do Checked := Tag=CurLang;
+  end;
+  //---
+begin
+  // Update language menu
+  UpdateLanguageMark;
+end;
+
+procedure TForm1.UpdateStateNotify(Sender: TObject);
+begin
+  UpdateState;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 var
   Reg: TRegistry;
-  IniFile: TSafeIniFile; // i:integer; b:boolean; s:string;
+  IniFile: TSafeIniFile;
+  //
+  procedure CreateLanguageMenu;
+    var
+      i: Integer;
+      mi: TMenuItem;
+  begin
+    for i := 0 to LangManager.LanguageCount-1 do begin
+      mi := NewItem(LangManager.LanguageNames[i], 0, False, True, LanguageItemClick, 0, '');
+      mi.Tag := LangManager.LanguageIDs[i];
+      mLanguage.Add(mi);
+    end;
+  end;
+  //
 begin
   try
     soundok := true;
@@ -356,6 +391,14 @@ begin
   except
     soundok := false
   end;
+  try
+    // Scan for language files in the app directory and register them in the LangManager object
+    LangManager.ScanForLangFiles(ExtractFileDir(ParamStr(0)), '*.lng', False);
+     // Create available languages menu
+    CreateLanguageMenu;
+     // Update interface elements
+    UpdateState;
+  except end;
   try
     TrackBar1Change(Self);
     TrackBar2Change(Self);
@@ -366,7 +409,7 @@ begin
         appdata := ppath;
   except
   end;
-  { автозапуск программы - проверка }
+  { cheking start with Windows }
   try
     PAutoStart := false;
     Reg := TRegistry.Create;
@@ -390,12 +433,12 @@ begin
     end;
   except
   end;
-  try // чтение INI-файла
+  try // INI-file reading
     IniFile := TSafeIniFile.Create(appdata + 'glaz.ini');
     // Work
     TimeToWork := IniFile.ReadInteger('Work', 'Time', 45);
     TrackBar1.Position := TimeToWork;
-    Edit1.Text := IniFile.ReadWideString('Work', 'Msg', workmsg);
+    Edit1.Text := IniFile.ReadWideString('Work', 'Msg', DKLangConstW('Sworkmsg'));
     Edit2.Text := IniFile.ReadWideString('Work', 'File', ppath + 'alarm.wav');
     StaticText1.Color := IniFile.ReadColor('Work', 'BgColor',
       StaticText1.Color);
@@ -408,7 +451,7 @@ begin
     // Rest
     TimeToRest := IniFile.ReadInteger('Rest', 'Time', 15);
     TrackBar2.Position := TimeToRest;
-    Edit3.Text := IniFile.ReadWideString('Rest', 'Msg', restmsg);
+    Edit3.Text := IniFile.ReadWideString('Rest', 'Msg', DKLangConstW('Srestmsg'));
     Edit4.Text := IniFile.ReadWideString('Rest', 'File', ppath + 'alarm.wav');
     StaticText2.Color := IniFile.ReadColor('Rest', 'BgColor',
       StaticText2.Color);
@@ -419,9 +462,11 @@ begin
     CheckBox4.Checked := IniFile.ReadBool('Param', 'MonitorPower', false);
     CheckBox5.Checked := IniFile.ReadBool('Param', 'UserActivity', false);
     SpinEdit1.Value := IniFile.ReadInteger('Param', 'UATime', 15);
+    // LanguageID
+    LangManager.LanguageID := IniFile.ReadInteger('Params', 'LanguageID', LangManager.LanguageID);
+    UpdateState;
   finally
-    if Assigned(IniFile) then
-      IniFile.Free;
+    FreeAndNil(IniFile);
   end;
 end;
 
@@ -431,10 +476,10 @@ var
     progpath: string;
     IniFile: TSafeIniFile;
 begin
-  { создание/удаление ключа автостарта }
+  { create / delete autostart registry key }
   try
     if N8.Checked <> PAutoStart then
-    begin { * } { Если значение CheckBox'а при выходе не равно его значению при старте - меняем соотв. инфу в реестре }
+    begin { * }
       progpath := Application.ExeName;
       Reg := TRegistry.Create;
       try
@@ -443,11 +488,11 @@ begin
         begin
           try
             if N8.Checked then
-            begin { создаем ключ }
+            begin { create key }
               Reg.WriteString(RegV, progpath);
             end
             else
-            begin { удаляем ключ }
+            begin { delete key }
               if Reg.ValueExists(RegV) then
                 Reg.DeleteValue(RegV);
             end;
@@ -462,7 +507,7 @@ begin
     end; { * }
   except
   end;
-  try // INI - сохранение настроек
+  try // INI - saving settings
     IniFile := TSafeIniFile.Create(appdata + 'glaz.ini');
     // Work
     IniFile.WriteInteger('Work', 'Time', TimeToWork);
@@ -483,8 +528,10 @@ begin
     IniFile.WriteBool('Param', 'MonitorPower', CheckBox4.Checked);
     IniFile.WriteBool('Param', 'UserActivity', CheckBox5.Checked);
     IniFile.WriteInteger('Param', 'UATime', SpinEdit1.Value);
+    // LanguageID
+    IniFile.WriteInteger('Params', 'LanguageID', LangManager.LanguageID);
   finally
-    if Assigned(IniFile) then IniFile.Free
+    FreeAndNil(IniFile);
   end;
 end;
 
@@ -511,6 +558,13 @@ begin
   except
     Result := '';
   end;
+end;
+
+procedure TForm1.LanguageItemClick(Sender: TObject);
+begin
+  // We stored language ID in Tag of each menu item (which is Sender here)
+  LangManager.LanguageID := (Sender as TComponent).Tag;
+  UpdateState;
 end;
 
 procedure TForm1.SpeedButton1Click(Sender: TObject);
@@ -553,7 +607,7 @@ procedure TForm1.Timer1Timer(Sender: TObject);
 var
   press: Boolean;
   s, f: string;
-label l1, l2, l3; // теплый ламповый label :)
+label l1, l2, l3; // :)
 // --------------------------
   function SecondsIdle: dword;
   var
@@ -587,8 +641,8 @@ begin
     end;
   l3:;
     if TimeLeft < 1 then
-    begin // 1 - если время истекло
-      // производим необходимые действия - показ сообщений, запуск файлов, вкл-выкл монитора
+    begin // 1 - if time is over
+      // produce the necessary action - showing messages, run files, on-off monitor
       Timer2.Enabled := true;
       if not workmode then
       begin
@@ -603,18 +657,17 @@ begin
       if (f <> '') and (FileExists(f)) then
       begin
         if ((not CheckBox1.Checked) and
-          ( { музыкальные файлы } (UC(ExtractFileExt(f)) = '.MP3') or
+          ( { music files } (UC(ExtractFileExt(f)) = '.MP3') or
           (UC(ExtractFileExt(f)) = '.WAV')))
-        then { звук внутренними средствами }
+        then { play }
           PlayMusic(f, true)
         else
           ShellExecute(0, nil, PChar(f), nil, nil, SW_RESTORE);
       end;
-      // встроенный динамик-вкл (ф-ция удалена)
-      // включаем монитор
+      // turn on monitor
       if CheckBox4.Checked and not workmode then
         SendMessage(Form1.Handle, WM_SYSCOMMAND, SC_MONITORPOWER, -1);
-      // показываем сообщение
+      // show message
       TextTrayIcon1.Enabled := false;
       if s <> '' then
         if CheckBox3.Checked then
@@ -630,7 +683,7 @@ begin
       TextTrayIcon1.Enabled := true;
       Timer2.Enabled := false;
       StopMusic;
-      // выключаем монитор
+      // turn off monitor
       if CheckBox4.Checked and workmode then
       begin
         waiting := true;
@@ -638,7 +691,7 @@ begin
         waiting := false;
         SendMessage(Form1.Handle, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
       end;
-      // меняем режим с отдыха на работу или наоборот
+      // change the mode from rest to work or vice versa
       workmode := not workmode;
       notwork := 0;
       if workmode then
@@ -655,11 +708,11 @@ begin
         TextTrayIcon1.Color := StaticText2.Color;
         TextTrayIcon1.Font := StaticText2.Font
       end;
-    end // 1 - кон
+    end // 1 - end
     else
-    begin // 2 - уменьшаем счетчик времени
+    begin // 2 - reduce the time counter
       Dec(TimeLeft);
-      // если есть проверка активности пользователя
+      // if there is a check of the user's activity
       if workmode and CheckBox5.Checked then
       begin
         press := false;
@@ -679,14 +732,14 @@ begin
         TextTrayIcon1.Text := '0';
         goto l3
       end;
-    end; // 2 - кон
+    end; // 2 - end
   l2:;
   finally
     if TextTrayIcon1.Tag = 0 then
       Timer1.Enabled := true;
     try
       if TimeLeft > 99 then
-        TextTrayIcon1.Text := IntToStr(TimeLeft div 60) + h
+        TextTrayIcon1.Text := IntToStr(TimeLeft div 60) + DKLangConstW('Sh')
       else
         TextTrayIcon1.Text := IntToStr(TimeLeft)
     except
@@ -713,13 +766,13 @@ begin
   if Timer1.Enabled then
   begin
     if workmode then
-      s := worktimes
+      s := DKLangConstW('Sworktimes')
     else
-      s := resttimes;
+      s := DKLangConstW('Sresttimes');
     TextTrayIcon1.Hint := 'NI Glaz - ' + s + ' ' + MinToStr(TimeLeft)
   end
   else
-    TextTrayIcon1.Hint := 'NI Glaz - ' + pauset
+    TextTrayIcon1.Hint := 'NI Glaz - ' + DKLangConstW('Spauset')
 end;
 
 procedure TForm1.TextTrayIcon1BalloonHintClick(Sender: TObject);
@@ -796,7 +849,7 @@ begin
   try
     TextTrayIcon1.Enabled := false;
     Timer1.Enabled := false;
-    // резервирование настроек
+    // remember settings
     se1 := SpinEdit1.Value;
     e1 := Edit1.Text;
     e2 := Edit2.Text;
@@ -812,7 +865,7 @@ begin
     c5 := CheckBox5.Checked;
     c6 := CheckBox6.Checked;
     if Form1.ShowModal <> mrOk then
-    begin // восстановление настроек
+    begin // restore settings
       TrackBar1.Position := TimeToWork;
       TrackBar2.Position := TimeToRest;
       SpinEdit1.Value := se1;
@@ -830,10 +883,10 @@ begin
       CheckBox5.Checked := c5;
       CheckBox6.Checked := c6;
     end
-    else  // если нажали OK
-    begin // новый цвет трея и перезапуск таймера
+    else  // if click OK
+    begin // new color icons in the system tray and restart the timer
       workmode := true;
-      Timer1.Interval := 100; // onTimer заметит изменение интервала и вносит коррективы
+      Timer1.Interval := 100; // onTimer notice the change interval and makes adjustments
       TimeToWork := TrackBar1.Position;
       TimeLeft := TimeToWork;
       TimeToRest := TrackBar2.Position;
@@ -910,10 +963,14 @@ begin
   try
     Timer1.Enabled := false;
     TextTrayIcon1.Enabled := false;
-    str := '"NI Glaz ' + FileVersion + '" (11.01.2015) [Freeware] ' + #13 + '' + #13 + pinfo
+    str := '"NI Glaz ' + FileVersion + '" (11.10.2015) [Freeware] ' + #13 + '' + #13 + DKLangConstW('Spinfo')
       + #13 + '' + #13 + '' + 'Support: support@kivlab.com' + #13 +
-      'WWW: http://www.kivlab.com/soft/ ' + #13 + '' + #13 +
-      'Copyright © 2002-2015 by Nikolay Ivanov. ';
+      'WWW: http://www.kivlab.com/soft/ ' + #13#13 +
+      'Copyright © 2002-2015 by Nikolay Ivanov. ' + #13#13 +
+      'Third Party Components:' + #13 +
+      '- DKLang Localization Package (http://www.dk-soft.org/)' + #13 +
+      '- CoolTrayIcon package (http://http://subsimple.com)' + #13 +
+      '- BASS audio library (http://www.un4seen.com/)';
     MessageBox(0, PChar(str), ' About', MB_OK + MB_ICONINFORMATION +
       MB_TOPMOST);
   finally
@@ -926,10 +983,15 @@ procedure TForm1.N13Click(Sender: TObject);
 var
   helpfile: String;
 begin
-  { путь до файла помощи }
+  { path to the help file }
   helpfile := ppath + 'help.chm';
   if FileExists(helpfile) then
     ShellExecute(0, nil, PChar(helpfile), nil, nil, 3);
+end;
+
+procedure TForm1.N14Click(Sender: TObject);
+begin
+  ShellExecute(0, nil, 'http://www.kivlab.com/donate/', nil, nil, 1);
 end;
 
 end.
