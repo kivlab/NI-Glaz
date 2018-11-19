@@ -4,7 +4,7 @@ object Form1: TForm1
   ActiveControl = BitBtn1
   BorderStyle = bsDialog
   Caption = 'NI Glaz'
-  ClientHeight = 415
+  ClientHeight = 451
   ClientWidth = 556
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -17,11 +17,14 @@ object Form1: TForm1
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
+  DesignSize = (
+    556
+    451)
   PixelsPerInch = 96
   TextHeight = 13
   object Label7: TLabel
-    Left = 32
-    Top = 379
+    Left = 41
+    Top = 406
     Width = 148
     Height = 13
     Caption = 'The time of user inactivity (min):'
@@ -437,10 +440,11 @@ object Form1: TForm1
     Height = 17
     Caption = 'Use an external program to play MP3 and WAV files'
     TabOrder = 2
+    OnClick = CheckBox1Click
   end
   object CheckBox3: TCheckBox
     Left = 8
-    Top = 328
+    Top = 348
     Width = 537
     Height = 17
     Caption = 'Show Baloon Hints'
@@ -448,7 +452,7 @@ object Form1: TForm1
   end
   object CheckBox4: TCheckBox
     Left = 8
-    Top = 344
+    Top = 366
     Width = 537
     Height = 17
     Caption = 'Turn off and turn on the monitor'
@@ -456,7 +460,7 @@ object Form1: TForm1
   end
   object CheckBox5: TCheckBox
     Left = 8
-    Top = 360
+    Top = 384
     Width = 537
     Height = 17
     Caption = 
@@ -466,8 +470,8 @@ object Form1: TForm1
     OnClick = CheckBox5Click
   end
   object SpinEdit1: TSpinEdit
-    Left = 264
-    Top = 376
+    Left = 273
+    Top = 403
     Width = 73
     Height = 22
     Enabled = False
@@ -478,25 +482,33 @@ object Form1: TForm1
   end
   object BitBtn1: TBitBtn
     Left = 368
-    Top = 384
+    Top = 420
     Width = 81
     Height = 25
-    DoubleBuffered = True
+    Anchors = [akRight, akBottom]
     Kind = bkOK
     NumGlyphs = 2
-    ParentDoubleBuffered = False
     TabOrder = 7
   end
   object BitBtn2: TBitBtn
     Left = 456
-    Top = 384
+    Top = 420
     Width = 89
     Height = 25
-    DoubleBuffered = True
+    Anchors = [akRight, akBottom]
     Kind = bkCancel
     NumGlyphs = 2
-    ParentDoubleBuffered = False
     TabOrder = 8
+  end
+  object CheckBox2: TCheckBox
+    Left = 8
+    Top = 330
+    Width = 537
+    Height = 17
+    Caption = 'Loop the sound'
+    Checked = True
+    State = cbChecked
+    TabOrder = 9
   end
   object OpenDialog1: TOpenDialog
     Filter = 
@@ -665,7 +677,7 @@ object Form1: TForm1
     Left = 312
     Top = 324
     Bitmap = {
-      494C010108001800100010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C010108001800200010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1069,10 +1081,11 @@ object Form1: TForm1
       000000000000}
   end
   object dklcMain: TDKLanguageController
+    OnLanguageChanged = dklcMainLanguageChanged
     Left = 504
     Top = 328
     LangData = {
-      0500466F726D31010100000001000000070043617074696F6E01380000000600
+      0500466F726D31010100000001000000070043617074696F6E01390000000600
       4C6162656C37010100000002000000070043617074696F6E00090047726F7570
       426F7831010100000003000000070043617074696F6E0006004C6162656C3101
       0100000004000000070043617074696F6E0006004C6162656C32010100000005
@@ -1108,6 +1121,7 @@ object Form1: TForm1
       6E000B00466F6E744469616C6F673100000C00436F6C6F724469616C6F673100
       00060054696D65723200000A00496D6167654C69737431000002004E35000009
       006D4C616E6775616765010100000022000000070043617074696F6E0003004E
-      3134010100000023000000070043617074696F6E00}
+      3134010100000023000000070043617074696F6E000900436865636B426F7832
+      010100000024000000070043617074696F6E00}
   end
 end

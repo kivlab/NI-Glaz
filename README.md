@@ -1,3 +1,3 @@
 # NI-Glaz
 Reminder of the need to rest when you're working for PC
-Developed in Delphi XE
+Developed in Delphi 10.2.3

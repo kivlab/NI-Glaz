@@ -1,6 +1,6 @@
 // NI Glaz - Reminder of the need to rest when you're working for PC
 
-// Copyright (C) 2002-2015 - Nikolai Ivanov (http://www.kivlab.com/)
+// Copyright (C) 2002-2018 - Nikolai Ivanov (https://kivlab.ru/)
 
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -17,6 +17,9 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+// Del dot for portable version
+{.$Define Portable}
+
 unit Unit1;
 
 interface
@@ -25,7 +28,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, Buttons, Spin, SafeINIFiles, ExtCtrls, ShellAPI,
   CoolTrayIcon, TextTrayIcon, Menus, Bass, Registry, ImgList, ActiveX, ShlObj,
-  DKLang;
+  DKLang, System.ImageList;
 
 type
   TForm1 = class(TForm)
@@ -86,6 +89,7 @@ type
     N5: TMenuItem;
     mLanguage: TMenuItem;
     N14: TMenuItem;
+    CheckBox2: TCheckBox;
     function MinToStr(minutes: integer): string;
     procedure TrackBar1Change(Sender: TObject);
     procedure TrackBar2Change(Sender: TObject);
@@ -121,6 +125,8 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure UpdateStateNotify(Sender: TObject);
     procedure N14Click(Sender: TObject);
+    procedure CheckBox1Click(Sender: TObject);
+    procedure dklcMainLanguageChanged(Sender: TObject);
   private
     { Private declarations }
     strs: HSTREAM;
@@ -287,8 +293,8 @@ begin
       l := 4
     else
       l := 0;
-    strs := BASS_StreamCreateFile(false, f, 0, 0, l + BASS_UNICODE);
-    BASS_ChannelPlay(strs, false)
+    strs := BASS_StreamCreateFile(false, f, 0, 0, l OR BASS_UNICODE);
+    BASS_ChannelPlay(strs, True)
   end;
 end;
 
@@ -386,7 +392,7 @@ var
 begin
   try
     soundok := true;
-    if not BASS_Init(1, 44100, 0, Handle, nil) then
+    if not BASS_Init(-1, 44100, 0, Handle, nil) then
       soundok := false
   except
     soundok := false
@@ -403,10 +409,14 @@ begin
     TrackBar1Change(Self);
     TrackBar2Change(Self);
     ppath := ExtractFilePath(Application.ExeName);
-    appdata := GetSpecFolder(CSIDL_APPDATA) + '\NI Glaz\';
-    if not DirectoryExists(appdata) then
-      if not ForceDirectories(appdata) then
-        appdata := ppath;
+    {$IfDef Portable}
+    AppData := ppath;
+    {$Else}
+    AppData := GetSpecFolder(CSIDL_APPDATA) + '\NI Glaz\';
+    if not DirectoryExists(AppData) then
+      if not ForceDirectories(AppData) then
+        AppData := ppath;
+    {$EndIf}
   except
   end;
   { cheking start with Windows }
@@ -439,7 +449,7 @@ begin
     TimeToWork := IniFile.ReadInteger('Work', 'Time', 45);
     TrackBar1.Position := TimeToWork;
     Edit1.Text := IniFile.ReadWideString('Work', 'Msg', DKLangConstW('Sworkmsg'));
-    Edit2.Text := IniFile.ReadWideString('Work', 'File', ppath + 'alarm.wav');
+    Edit2.Text := IniFile.ReadWideString('Work', 'File', ppath + 'alarm.mp3');
     StaticText1.Color := IniFile.ReadColor('Work', 'BgColor',
       StaticText1.Color);
     StaticText1.Font := IniFile.ReadFont('Work', 'Font', StaticText1.Font);
@@ -452,12 +462,13 @@ begin
     TimeToRest := IniFile.ReadInteger('Rest', 'Time', 15);
     TrackBar2.Position := TimeToRest;
     Edit3.Text := IniFile.ReadWideString('Rest', 'Msg', DKLangConstW('Srestmsg'));
-    Edit4.Text := IniFile.ReadWideString('Rest', 'File', ppath + 'alarm.wav');
+    Edit4.Text := IniFile.ReadWideString('Rest', 'File', ppath + 'alarm.mp3');
     StaticText2.Color := IniFile.ReadColor('Rest', 'BgColor',
       StaticText2.Color);
     StaticText2.Font := IniFile.ReadFont('Rest', 'Font', StaticText2.Font);
     // Param
     CheckBox1.Checked := IniFile.ReadBool('Param', 'ExtPlayer', false);
+    CheckBox2.Checked := IniFile.ReadBool('Param', 'LoopSound', True);
     CheckBox3.Checked := IniFile.ReadBool('Param', 'BaloonHints', false);
     CheckBox4.Checked := IniFile.ReadBool('Param', 'MonitorPower', false);
     CheckBox5.Checked := IniFile.ReadBool('Param', 'UserActivity', false);
@@ -524,6 +535,7 @@ begin
     IniFile.WriteFont('Rest', 'Font', StaticText2.Font);
     // Param
     IniFile.WriteBool('Param', 'ExtPlayer', CheckBox1.Checked);
+    IniFile.WriteBool('Param', 'LoopSound', CheckBox2.Checked);
     IniFile.WriteBool('Param', 'BaloonHints', CheckBox3.Checked);
     IniFile.WriteBool('Param', 'MonitorPower', CheckBox4.Checked);
     IniFile.WriteBool('Param', 'UserActivity', CheckBox5.Checked);
@@ -587,6 +599,11 @@ procedure TForm1.SpeedButton4Click(Sender: TObject);
 begin
   if OpenDialog1.Execute then
     Edit4.Text := OpenDialog1.filename
+end;
+
+procedure TForm1.CheckBox1Click(Sender: TObject);
+begin
+  CheckBox2.Enabled := not CheckBox1.Checked;
 end;
 
 procedure TForm1.CheckBox5Click(Sender: TObject);
@@ -660,7 +677,7 @@ begin
           ( { music files } (UC(ExtractFileExt(f)) = '.MP3') or
           (UC(ExtractFileExt(f)) = '.WAV')))
         then { play }
-          PlayMusic(f, true)
+          PlayMusic(f, CheckBox2.Checked)
         else
           ShellExecute(0, nil, PChar(f), nil, nil, SW_RESTORE);
       end;
@@ -683,7 +700,7 @@ begin
       TextTrayIcon1.Enabled := true;
       Timer2.Enabled := false;
       StopMusic;
-      // turn off monitor
+      // turn off the monitor
       if CheckBox4.Checked and workmode then
       begin
         waiting := true;
@@ -832,6 +849,12 @@ begin
   end;
 end;
 
+procedure TForm1.dklcMainLanguageChanged(Sender: TObject);
+begin
+  // DKLang fix - components that are not translated automatically (for example, TBitBnt)
+  BitBtn2.Caption := DKLangConstW('Scancel');
+end;
+
 procedure TForm1.TextTrayIcon1DblClick(Sender: TObject);
 var
   se1: integer;
@@ -947,12 +970,12 @@ end;
 
 procedure TForm1.N11Click(Sender: TObject);
 begin
-  ShellExecute(0, nil, 'http://www.kivlab.com/', nil, nil, 1);
+  ShellExecute(0, nil, 'https://kivlab.ru/', nil, nil, 1);
 end;
 
 procedure TForm1.N10Click(Sender: TObject);
 begin
-  ShellExecute(0, nil, PChar('mailto:support@kivlab.com?subject=NI%20Glaz%20' + FileVersion),
+  ShellExecute(0, nil, PChar('mailto:support@kivlab.ru?subject=NI%20Glaz%20' + FileVersion),
     nil, nil, 1);
 end;
 
@@ -963,13 +986,13 @@ begin
   try
     Timer1.Enabled := false;
     TextTrayIcon1.Enabled := false;
-    str := '"NI Glaz ' + FileVersion + '" (11.10.2015) [Freeware] ' + #13 + '' + #13 + DKLangConstW('Spinfo')
-      + #13 + '' + #13 + '' + 'Support: support@kivlab.com' + #13 +
-      'WWW: http://www.kivlab.com/soft/ ' + #13#13 +
-      'Copyright © 2002-2015 by Nikolay Ivanov. ' + #13#13 +
+    str := '"NI Glaz '{$IfDef Win64} + '(x64) ' {$EndIf} {$IfDef Portable} + 'Portable ' {$EndIf} + 'v.' + FileVersion + '" (18.11.2018) [Freeware] ' + #13 + '' + #13 + DKLangConstW('Spinfo')
+      + #13 + '' + #13 + '' + 'Support: support@kivlab.ru' + #13 +
+      'WWW: https://kivlab.ru ' + #13#13 +
+      'Copyright © 2002-2018 by Nikolay Ivanov. ' + #13#13 +
       'Third Party Components:' + #13 +
       '- DKLang Localization Package (http://www.dk-soft.org/)' + #13 +
-      '- CoolTrayIcon package (http://http://subsimple.com)' + #13 +
+      '- CoolTrayIcon package (http://subsimple.com/)' + #13 +
       '- BASS audio library (http://www.un4seen.com/)';
     MessageBox(0, PChar(str), ' About', MB_OK + MB_ICONINFORMATION +
       MB_TOPMOST);
@@ -991,7 +1014,7 @@ end;
 
 procedure TForm1.N14Click(Sender: TObject);
 begin
-  ShellExecute(0, nil, 'http://www.kivlab.com/donate/', nil, nil, 1);
+  ShellExecute(0, nil, 'https://kivlab.ru/donate/', nil, nil, 1);
 end;
 
 end.
