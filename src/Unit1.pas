@@ -138,6 +138,8 @@ type
     procedure UpdateState;
      // Language item click handler
     procedure LanguageItemClick(Sender: TObject);
+    // Save settings to INI-file
+    procedure SaveSettings;
   public
     { Public declarations }
   end;
@@ -445,6 +447,8 @@ begin
   end;
   try // INI-file reading
     IniFile := TSafeIniFile.Create(appdata + 'glaz.ini');
+    // LanguageID
+    LangManager.LanguageID := IniFile.ReadInteger('Params', 'LanguageID', LangManager.LanguageID);
     // Work
     TimeToWork := IniFile.ReadInteger('Work', 'Time', 45);
     TrackBar1.Position := TimeToWork;
@@ -473,8 +477,6 @@ begin
     CheckBox4.Checked := IniFile.ReadBool('Param', 'MonitorPower', false);
     CheckBox5.Checked := IniFile.ReadBool('Param', 'UserActivity', false);
     SpinEdit1.Value := IniFile.ReadInteger('Param', 'UATime', 15);
-    // LanguageID
-    LangManager.LanguageID := IniFile.ReadInteger('Params', 'LanguageID', LangManager.LanguageID);
     UpdateState;
   finally
     FreeAndNil(IniFile);
@@ -518,33 +520,7 @@ begin
     end; { * }
   except
   end;
-  try // INI - saving settings
-    IniFile := TSafeIniFile.Create(appdata + 'glaz.ini');
-    // Work
-    IniFile.WriteInteger('Work', 'Time', TimeToWork);
-    IniFile.WriteWideString('Work', 'Msg', Edit1.Text);
-    IniFile.WriteWideString('Work', 'File', Edit2.Text);
-    IniFile.WriteColor('Work', 'BgColor', StaticText1.Color);
-    IniFile.WriteFont('Work', 'Font', StaticText1.Font);
-    IniFile.WriteBool('Work', 'Border', CheckBox6.Checked);
-    // Rest
-    IniFile.WriteInteger('Rest', 'Time', TimeToRest);
-    IniFile.WriteWideString('Rest', 'Msg', Edit3.Text);
-    IniFile.WriteWideString('Rest', 'File', Edit4.Text);
-    IniFile.WriteColor('Rest', 'BgColor', StaticText2.Color);
-    IniFile.WriteFont('Rest', 'Font', StaticText2.Font);
-    // Param
-    IniFile.WriteBool('Param', 'ExtPlayer', CheckBox1.Checked);
-    IniFile.WriteBool('Param', 'LoopSound', CheckBox2.Checked);
-    IniFile.WriteBool('Param', 'BaloonHints', CheckBox3.Checked);
-    IniFile.WriteBool('Param', 'MonitorPower', CheckBox4.Checked);
-    IniFile.WriteBool('Param', 'UserActivity', CheckBox5.Checked);
-    IniFile.WriteInteger('Param', 'UATime', SpinEdit1.Value);
-    // LanguageID
-    IniFile.WriteInteger('Params', 'LanguageID', LangManager.LanguageID);
-  finally
-    FreeAndNil(IniFile);
-  end;
+  SaveSettings;
 end;
 
 procedure TForm1.FormShow(Sender: TObject);
@@ -577,6 +553,39 @@ begin
   // We stored language ID in Tag of each menu item (which is Sender here)
   LangManager.LanguageID := (Sender as TComponent).Tag;
   UpdateState;
+end;
+
+procedure TForm1.SaveSettings;
+var
+  IniFile: TSafeIniFile;
+begin
+  try // INI - saving settings
+    IniFile := TSafeIniFile.Create(appdata + 'glaz.ini');
+    // Work
+    IniFile.WriteInteger('Work', 'Time', TimeToWork);
+    IniFile.WriteWideString('Work', 'Msg', Edit1.Text);
+    IniFile.WriteWideString('Work', 'File', Edit2.Text);
+    IniFile.WriteColor('Work', 'BgColor', StaticText1.Color);
+    IniFile.WriteFont('Work', 'Font', StaticText1.Font);
+    IniFile.WriteBool('Work', 'Border', CheckBox6.Checked);
+    // Rest
+    IniFile.WriteInteger('Rest', 'Time', TimeToRest);
+    IniFile.WriteWideString('Rest', 'Msg', Edit3.Text);
+    IniFile.WriteWideString('Rest', 'File', Edit4.Text);
+    IniFile.WriteColor('Rest', 'BgColor', StaticText2.Color);
+    IniFile.WriteFont('Rest', 'Font', StaticText2.Font);
+    // Param
+    IniFile.WriteBool('Param', 'ExtPlayer', CheckBox1.Checked);
+    IniFile.WriteBool('Param', 'LoopSound', CheckBox2.Checked);
+    IniFile.WriteBool('Param', 'BaloonHints', CheckBox3.Checked);
+    IniFile.WriteBool('Param', 'MonitorPower', CheckBox4.Checked);
+    IniFile.WriteBool('Param', 'UserActivity', CheckBox5.Checked);
+    IniFile.WriteInteger('Param', 'UATime', SpinEdit1.Value);
+    // LanguageID
+    IniFile.WriteInteger('Params', 'LanguageID', LangManager.LanguageID);
+  finally
+    FreeAndNil(IniFile);
+  end;
 end;
 
 procedure TForm1.SpeedButton1Click(Sender: TObject);
@@ -862,6 +871,7 @@ var
   stc1, stc2: TColor;
   stf1, stf2: TFont;
   c1, c3, c4, c5, c6: Boolean;
+  IniFile: TSafeIniFile;
 begin
   if Timer2.Enabled then
     exit;
@@ -916,6 +926,7 @@ begin
       TextTrayIcon1.Color := StaticText1.Color;
       TextTrayIcon1.Font := StaticText1.Font;
       TextTrayIcon1.Border := (StaticText1.BorderStyle = sbsSingle);
+      SaveSettings;
     end;
   finally
     FreeAndNil(stf1);
@@ -986,10 +997,10 @@ begin
   try
     Timer1.Enabled := false;
     TextTrayIcon1.Enabled := false;
-    str := '"NI Glaz '{$IfDef Win64} + '(x64) ' {$EndIf} {$IfDef Portable} + 'Portable ' {$EndIf} + 'v.' + FileVersion + '" (18.11.2018) [Freeware] ' + #13 + '' + #13 + DKLangConstW('Spinfo')
+    str := '"NI Glaz '{$IfDef Win64} + '(x64) ' {$EndIf} {$IfDef Portable} + 'Portable ' {$EndIf} + 'v.' + FileVersion + '" (14.09.2019) [Freeware] ' + #13 + '' + #13 + DKLangConstW('Spinfo')
       + #13 + '' + #13 + '' + 'Support: support@kivlab.ru' + #13 +
       'WWW: https://kivlab.ru ' + #13#13 +
-      'Copyright © 2002-2018 by Nikolay Ivanov. ' + #13#13 +
+      'Copyright © 2002-2019 by Nikolay Ivanov. ' + #13#13 +
       'Third Party Components:' + #13 +
       '- DKLang Localization Package (http://www.dk-soft.org/)' + #13 +
       '- CoolTrayIcon package (http://subsimple.com/)' + #13 +
